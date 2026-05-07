@@ -1132,7 +1132,17 @@ local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
             end
         end
 
-        Instance[key] = value
+        local Assigned = false
+        for _ = 1, 4 do
+            local Success = pcall(function()
+                Instance[key] = value
+            end)
+            if Success then
+                Assigned = true
+                break
+            end
+            task.wait()
+        end
     end
 
     if GetTableSize(ThemeProperties) > 0 then
@@ -1141,12 +1151,33 @@ local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
 end
 
 local function New(ClassName: string, Properties: { [string]: any }): any
-    local Instance = Instance.new(ClassName)
+    local Instance = nil
+    for _ = 1, 20 do
+        local Success, Created = pcall(function()
+            return Instance.new(ClassName)
+        end)
+        if Success and Created then
+            Instance = Created
+            break
+        end
+        task.wait()
+    end
+
+    if not Instance then
+        local Success, Created = pcall(function()
+            return Instance.new("Frame")
+        end)
+        if Success and Created then
+            Instance = Created
+        else
+            return nil
+        end
+    end
 
     if Templates[ClassName] then
-        FillInstance(Templates[ClassName], Instance)
+        pcall(FillInstance, Templates[ClassName], Instance)
     end
-    FillInstance(Properties, Instance)
+    pcall(FillInstance, Properties, Instance)
 
     if Properties["Parent"] and not Properties["ZIndex"] then
         pcall(function()
@@ -1662,27 +1693,38 @@ function Library:AddDraggableButton(Text: string, Func, ExcludeScaling: boolean?
 end
 
 function Library:AddDraggableMenu(Name: string)
-    local Holder = New("Frame", {
-        AutomaticSize = Enum.AutomaticSize.XY,
-        BackgroundColor3 = "BackgroundColor",
-        Position = UDim2.fromOffset(6, 6),
-        Size = UDim2.fromOffset(0, 0),
-        ZIndex = 10,
-        Parent = ScreenGui,
+    local Holder = nil
+    for _ = 1, 4 do
+        Holder = New("Frame", {
+            AutomaticSize = Enum.AutomaticSize.XY,
+            BackgroundColor3 = "BackgroundColor",
+            Position = UDim2.fromOffset(6, 6),
+            Size = UDim2.fromOffset(0, 0),
+            ZIndex = 10,
+            Parent = ScreenGui,
+        })
+        if Holder then
+            break
+        end
+        task.wait()
+    end
+    if not Holder then
+        return nil, nil
+    end
+    local HolderCorner = New("UICorner", {
+        CornerRadius = UDim.new(0, Library.CornerRadius),
+        Parent = Holder,
     })
-    table.insert(
-        Library.Corners,
-        New("UICorner", {
-            CornerRadius = UDim.new(0, Library.CornerRadius),
-            Parent = Holder,
-        })
-    )
-    table.insert(
-        Library.Scales,
-        New("UIScale", {
-            Parent = Holder,
-        })
-    )
+    if HolderCorner then
+        table.insert(Library.Corners, HolderCorner)
+    end
+
+    local HolderScale = New("UIScale", {
+        Parent = Holder,
+    })
+    if HolderScale then
+        table.insert(Library.Scales, HolderScale)
+    end
     Library:AddOutline(Holder)
 
     Library:MakeLine(Holder, {
@@ -6506,9 +6548,13 @@ function Library:CreateWindow(WindowInfo)
 
     do
         Library.KeybindFrame, Library.KeybindContainer = Library:AddDraggableMenu("Keybinds")
-        Library.KeybindFrame.AnchorPoint = Vector2.new(0, 0.5)
-        Library.KeybindFrame.Position = UDim2.new(0, 6, 0.5, 0)
-        Library.KeybindFrame.Visible = false
+        if Library.KeybindFrame then
+            pcall(function()
+                Library.KeybindFrame.AnchorPoint = Vector2.new(0, 0.5)
+                Library.KeybindFrame.Position = UDim2.new(0, 6, 0.5, 0)
+                Library.KeybindFrame.Visible = false
+            end)
+        end
 
         MainFrame = New("TextButton", {
             BackgroundColor3 = function()
