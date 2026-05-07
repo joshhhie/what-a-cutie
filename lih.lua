@@ -2367,10 +2367,16 @@ do
 
         KeyPicker.Modifiers = VerifyModifiers(KeyPicker.Modifiers)
 
+        local function GetKeyPickerDisplayText(Value)
+            local Text = tostring(Value or "None")
+            return Text == "None" and "-" or Text
+        end
+
+        local PickerWidth = math.max(18, Library:GetTextBounds(GetKeyPickerDisplayText(KeyPicker.Value), Library.Scheme.Font, 14) + 12)
         local Picker = New("TextButton", {
             BackgroundColor3 = "MainColor",
-            Size = UDim2.fromOffset(18, 18),
-            Text = KeyPicker.Value,
+            Size = UDim2.fromOffset(PickerWidth, 18),
+            Text = GetKeyPickerDisplayText(KeyPicker.Value),
             TextSize = 14,
             Parent = ToggleLabel,
         })
@@ -2532,14 +2538,15 @@ do
                 return
             end
 
+            local DisplayText = GetKeyPickerDisplayText(PickerText or KeyPicker.DisplayValue)
             local X, Y = Library:GetTextBounds(
-                PickerText or KeyPicker.DisplayValue,
+                DisplayText,
                 Picker.FontFace,
                 Picker.TextSize,
                 ToggleLabel.AbsoluteSize.X
             )
-            Picker.Text = PickerText or KeyPicker.DisplayValue
-            Picker.Size = UDim2.fromOffset((X + 9), (Y + 4))
+            Picker.Text = DisplayText
+            Picker.Size = UDim2.fromOffset(math.max(18, X + 9), (Y + 4))
         end
 
         function KeyPicker:Update()
@@ -2645,6 +2652,12 @@ do
                 KeyPicker.Value = Key
             else
                 KeyPicker.Value = "Unknown"
+            end
+
+            if ParentObj.Type == "Toggle" and KeyPicker.Mode == "Toggle" then
+                KeyPicker.SyncToggleState = KeyPicker.Value ~= "None" and KeyPicker.Value ~= "Unknown"
+                KeyPicker.Toggled = ParentObj.Value
+                Info.Modes = { "Toggle", "Hold" }
             end
 
             KeyPicker.Modifiers =
@@ -4053,6 +4066,15 @@ do
         Toggle.Container = Container
         setmetatable(Toggle, BaseAddons)
 
+        if not Toggle.AutoKeyPicker then
+            Toggle.AutoKeyPicker = Toggle:AddKeyPicker(Idx .. "Key", {
+                Text = Toggle.Text,
+                Default = Info.Keybind or "None",
+                Mode = "Toggle",
+                SyncToggleState = Info.Keybind ~= nil and Info.Keybind ~= "None",
+            })
+        end
+
         Toggle.Holder = Button
         table.insert(Groupbox.Elements, Toggle)
 
@@ -4275,6 +4297,15 @@ do
         Toggle.TextLabel = Label
         Toggle.Container = Container
         setmetatable(Toggle, BaseAddons)
+
+        if not Toggle.AutoKeyPicker then
+            Toggle.AutoKeyPicker = Toggle:AddKeyPicker(Idx .. "Key", {
+                Text = Toggle.Text,
+                Default = Info.Keybind or "None",
+                Mode = "Toggle",
+                SyncToggleState = Info.Keybind ~= nil and Info.Keybind ~= "None",
+            })
+        end
 
         Toggle.Holder = Button
         table.insert(Groupbox.Elements, Toggle)
